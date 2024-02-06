@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -45,7 +46,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var currentScreen by remember { mutableStateOf("Screen1") }
+            var currentScreen by remember { mutableStateOf("WelcomeScreen") }
             var questionsList by remember { mutableStateOf(questions.toMutableList()) }
             var currentQuestionIndex by remember { mutableStateOf(0) }
             var score by remember { mutableStateOf(0) }
@@ -53,10 +54,12 @@ class MainActivity : ComponentActivity() {
             var selectedQuestions by remember { mutableStateOf(listOf<Question>()) }
 
             when (currentScreen) {
-                "Screen1" -> WelcomeScreen(
-                    onContinueClicked = { currentScreen = "Screen2" }
+                // Screen1
+                "WelcomeScreen" -> WelcomeScreen(
+                    onContinueClicked = { currentScreen = "GameMenuScreen" }
                 )
-                "Screen2" -> GameMenuScreen(
+                // Screen2
+                "GameMenuScreen" -> GameMenuScreen(
                     onStartGameClicked = {
                         userAnswers = listOf()
                         selectedQuestions = questions.shuffled().take(4)
@@ -64,46 +67,67 @@ class MainActivity : ComponentActivity() {
                         currentQuestionIndex = 0
                         score = 0
                     },
-                    onShowScoreClicked = { currentScreen = "Screen3" },
-                    onGoBackClicked = { currentScreen = "Screen1" },
+                    onShowScoreClicked = { currentScreen = "ShowScoreScreen" },
+                    onGoBackClicked = { currentScreen = "WelcomeScreen" },
                     onAddQuestionClicked = { currentScreen = "AddQuestion" }
                 )
+
                 "GameA" -> {
                     if (currentQuestionIndex < selectedQuestions.size) {
                         GameScreen(
                             question = selectedQuestions[currentQuestionIndex],
                             questionIndex = currentQuestionIndex,
                             onAnswerSelected = { selectedIndex ->
-                                // 检查答案是否正确并更新分数
+                                // Check if the answer is correct and update the score
                                 if (selectedIndex == selectedQuestions[currentQuestionIndex].correctAnswerIndex) {
                                     score++
                                 }
                                 userAnswers = userAnswers + selectedIndex
                             },
                             onContinue = {
-                                // 处理题目切换逻辑
+                                // Switch Questions
                                 if (currentQuestionIndex < selectedQuestions.size - 1) {
                                     currentQuestionIndex++
                                 } else {
-                                    currentScreen = "Screen3" // 所有问题都已回答，显示结果
+                                    currentScreen = "ResultsScreen" // All questions have been answered, display the results
                                 }
                             }
                         )
                     }
                 }
 
+                // Screen3
+                "ShowScoreScreen" -> ShowScoreScreen(
+                    lastScoreGameA = score,
+                    onBackClicked = { currentScreen = "GameMenuScreen" }
+                )
 
-                "Screen3" -> ResultsScreen(
+                "ResultsScreen" -> ResultsScreen(
                     score = score,
                     questions = selectedQuestions,
                     userAnswers = userAnswers,
-                    onReturnClicked = { currentScreen = "Screen2" }
+                    onReturnClicked = { currentScreen = "GameMenuScreen" }
                 )
-                "AddQuestion" -> AddQuestionScreen(onQuestionAdded = { newQuestion ->
-                    questionsList.add(newQuestion)
-                    currentScreen = "Screen2"
-                },
-                    onCancel = { currentScreen = "Screen2" }
+
+                "AddQuestion" -> AddQuestionScreen(
+                    questionList = questionsList,
+                    onQuestionAdded = { newQuestion ->
+                        // If the new question is not in the list, add it directly
+                        if (questionsList.none { it.questionText == newQuestion.questionText }) {
+                            questionsList.add(newQuestion)
+                        }
+                        currentScreen = "GameMenuScreen"
+                    },
+                    onConfirmReplace = { newQuestion ->
+                        // If the new question is in the list, find it and replace
+                        val index =
+                            questionsList.indexOfFirst { it.questionText == newQuestion.questionText }
+                        if (index != -1) {
+                            questionsList[index] = newQuestion
+                        }
+                        currentScreen = "GameMenuScreen"
+                    },
+                    onCancel = { currentScreen = "GameMenuScreen" }
                 )
             }
         }
@@ -221,19 +245,19 @@ val questions = mutableListOf(
 fun GameScreen(
     question: Question,
     questionIndex: Int,
-    onAnswerSelected: (Int) -> Unit,  // 更改回调函数签名
+    onAnswerSelected: (Int) -> Unit,
     onContinue: () -> Unit
 ) {
     val colors = listOf(
-        Color(0xFFE57373), // 浅红色
-        Color(0xFF81C784), // 浅绿色
-        Color(0xFF64B5F6), // 浅蓝色
-        Color(0xFFFFF176)  // 浅黄色
+        Color(0xFFE57373), // light red
+        Color(0xFF81C784), // light green
+        Color(0xFF64B5F6), // light blue
+        Color(0xFFFFF176)  // light yellow
     )
 
     val backgroundColor = colors[questionIndex % colors.size]
-    var selectedAnswerIndex by remember { mutableStateOf<Int?>(null) }  // 记录用户的答案选择
-    // 当问题索引改变时，重置选择的答案索引
+    var selectedAnswerIndex by remember { mutableStateOf<Int?>(null) }  // Record the user's answer choices
+    // When the question index changes, reset the selected answer index
     LaunchedEffect(questionIndex) {
         selectedAnswerIndex = null
     }
@@ -255,7 +279,7 @@ fun GameScreen(
             }
             Button(
                 onClick = {
-                    selectedAnswerIndex = index  // 更新用户选择的答案索引
+                    selectedAnswerIndex = index  // Update the answer index selected by the user
                 },
                 modifier = Modifier.padding(top = 8.dp)
             ) {
@@ -264,7 +288,7 @@ fun GameScreen(
         }
         Button(
             onClick = {
-                onAnswerSelected(selectedAnswerIndex ?: -1)  // 用户未作答则传递 -1
+                onAnswerSelected(selectedAnswerIndex ?: -1)  // Pass -1 if the user does not answer
                 onContinue()
             },
             modifier = Modifier.padding(top = 24.dp)
@@ -340,18 +364,27 @@ fun ShowScoreScreen(
 }
 
 @Composable
-fun AddQuestionScreen(onQuestionAdded: (Question) -> Unit,onCancel: () -> Unit) {
+fun AddQuestionScreen(
+    questionList: List<Question>,
+    onQuestionAdded: (Question) -> Unit,
+    onConfirmReplace: (Question) -> Unit,
+    onCancel: () -> Unit) {
     var questionText by remember { mutableStateOf("") }
     var optionA by remember { mutableStateOf("") }
     var optionB by remember { mutableStateOf("") }
     var optionC by remember { mutableStateOf("") }
     var correctAnswerIndex by remember { mutableStateOf(0) }
 
+    // Marks whether to show the overwrite confirmation dialog
+    var showConfirmReplaceDialog by remember { mutableStateOf(false) }
+    var questionToReplaceIndex by remember { mutableStateOf(-1) }
+
     val isInputValid = questionText.isNotBlank() &&
             optionA.isNotBlank() &&
             optionB.isNotBlank() &&
             optionC.isNotBlank()
 
+    val existingQuestionIndex = questionList.indexOfFirst { it.questionText == questionText }
     Column(modifier = Modifier.padding(16.dp)) {
         TextField(
             value = questionText,
@@ -394,9 +427,19 @@ fun AddQuestionScreen(onQuestionAdded: (Question) -> Unit,onCancel: () -> Unit) 
 
         Button(onClick = {
             if (isInputValid) {
-                val newQuestion = Question(questionText, listOf(optionA, optionB, optionC), correctAnswerIndex)
-                onQuestionAdded(newQuestion)
-                questions.add(newQuestion)
+                if (existingQuestionIndex >= 0){
+                    //The question already exists and requires confirmation of coverage.
+                    showConfirmReplaceDialog = true
+                    questionToReplaceIndex = existingQuestionIndex
+                } else {
+                    val newQuestion = Question(
+                        questionText,
+                        listOf(optionA, optionB, optionC),
+                        correctAnswerIndex
+                    )
+                    onQuestionAdded(newQuestion)
+                    questions.add(newQuestion)
+                }
             }
         },
             enabled = isInputValid) {
@@ -405,6 +448,40 @@ fun AddQuestionScreen(onQuestionAdded: (Question) -> Unit,onCancel: () -> Unit) 
         Button(onClick = onCancel) {
             Text("Cancel")
         }
+    }
+    if (showConfirmReplaceDialog){
+        AlertDialog(
+            onDismissRequest = {
+                showConfirmReplaceDialog = false
+            },
+            title = { Text("Confirm Replace") },
+            text = { Text("This question already exists. Do you want to replace it?")},
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // User confirms overwriting and replaces the problem
+                        val newQuestion = Question(questionText, listOf(optionA,optionB,optionC), correctAnswerIndex)
+                        // Delete questions with the same topic first
+                        questions.removeAll { it.questionText == questionText }
+                        // Then add a new question
+                        questions.add(newQuestion)
+                        onConfirmReplace(newQuestion)
+                        showConfirmReplaceDialog = false
+                    }
+                ){
+                    Text("Replace")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // User cancel overwriting
+                        showConfirmReplaceDialog = false
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -476,9 +553,15 @@ fun PreviewResultsScreen() {
 @Composable
 fun PreviewAddQuestionScreen() {
     GameProjectTheme {
+
+        val emptyQuestionList = listOf<Question>()
+
         AddQuestionScreen(
+            questionList = emptyQuestionList,
             onQuestionAdded = { /* TODO */ },
+            onConfirmReplace = { /* TODO */ },
             onCancel = { /* TODO */ }
         )
     }
 }
+
