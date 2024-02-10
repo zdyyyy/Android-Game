@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
                 "GameMenuScreen" -> GameMenuScreen(
                     onStartGameClicked = {
                         userAnswers = listOf()
+                        //randomly select 4 four questions from question list
                         selectedQuestions = questions.shuffled().take(4)
                         currentScreen = "GameA"
                         currentQuestionIndex = 0
@@ -111,14 +112,16 @@ class MainActivity : ComponentActivity() {
 
                 "AddQuestion" -> AddQuestionScreen(
                     questionList = questionsList,
-                    onQuestionAdded = { newQuestion ->
+                    onQuestionAdded = {
+                        newQuestion ->
                         // If the new question is not in the list, add it directly
                         if (questionsList.none { it.questionText == newQuestion.questionText }) {
                             questionsList.add(newQuestion)
                         }
                         currentScreen = "GameMenuScreen"
                     },
-                    onConfirmReplace = { newQuestion ->
+                    onConfirmReplace = {
+                        newQuestion ->
                         // If the new question is in the list, find it and replace
                         val index =
                             questionsList.indexOfFirst { it.questionText == newQuestion.questionText }
@@ -131,7 +134,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-
+        //Background music
         setupBackgroundMusic()
     }
 
@@ -157,6 +160,7 @@ fun WelcomeScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        //uottawa logo
         Image(
             painter = painterResource(id = R.drawable.uottawa_logo),
             contentDescription = "Logo",
@@ -164,6 +168,7 @@ fun WelcomeScreen(
                 .size(100.dp)
                 .padding(bottom = 16.dp)
         )
+        //welcome text
         Text("Welcome to the Zidu Yin's Game")
         Button(
             modifier = Modifier.padding(vertical = 24.dp),
@@ -187,24 +192,28 @@ fun GameMenuScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        //Button 1
         Button(
             onClick = onStartGameClicked,
             modifier = Modifier.padding(8.dp)
         ) {
             Text("Start Game")
         }
+        //Button 2
         Button(
             onClick = onShowScoreClicked,
             modifier = Modifier.padding(8.dp)
         ) {
             Text("Show Last Score")
         }
+        //Button 3
         Button(
             onClick = onGoBackClicked,
             modifier = Modifier.padding(8.dp)
         ) {
             Text("Go Back")
         }
+        //Button 4
         Button(onClick = onAddQuestionClicked) {
             Text("Add Question")
         }
@@ -270,6 +279,7 @@ fun GameScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("${questionIndex + 1}: ${question.questionText}")
+        //Add index(a,b,c)
         question.options.forEachIndexed { index, option ->
             val optionLabel = when (index) {
                 0 -> "a"
@@ -316,14 +326,18 @@ fun ResultsScreen(
     ) {
         Text("Your Score: $score")
         questions.forEachIndexed { index, question ->
+            //Get user's answer, return -1 if not answer
             val userAnswerIndex = userAnswers.getOrNull(index) ?: -1
             Log.d("ResultsScreen", "Question: ${question.questionText}, User Answer Index: $userAnswerIndex, Correct Answer Index: ${question.correctAnswerIndex}")
+            //When user's answer index is equal to correct answer index
             val isCorrect = question.correctAnswerIndex == userAnswerIndex
+            //Provide feedback
             val answerFeedback = if (isCorrect) {
                 "Correct!"
             } else {
                 "Wrong! Correct Answer: ${question.options[question.correctAnswerIndex]}"
             }
+            //Highlight for wrong answer
             val textStyle = if (isCorrect) TextStyle(fontWeight = FontWeight.Normal) else TextStyle(fontWeight = FontWeight.Bold)
 
             Text(
@@ -353,6 +367,7 @@ fun ShowScoreScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        //The score of the last game the user played
         Text("Last Score for Game A: $lastScoreGameA")
         Button(
             onClick = onBackClicked,
