@@ -83,6 +83,7 @@ class MainActivity : ComponentActivity() {
                                 if (selectedIndex == selectedQuestions[currentQuestionIndex].correctAnswerIndex) {
                                     score++
                                 }
+                                // Update user's answers list
                                 userAnswers = userAnswers + selectedIndex
                             },
                             onContinue = {
@@ -390,10 +391,12 @@ fun AddQuestionScreen(
     var optionC by remember { mutableStateOf("") }
     var correctAnswerIndex by remember { mutableStateOf(0) }
 
+    // We should consider users may add same question text with or without different choices
     // Marks whether to show the overwrite confirmation dialog
     var showConfirmReplaceDialog by remember { mutableStateOf(false) }
     var questionToReplaceIndex by remember { mutableStateOf(-1) }
 
+    // New Question Text and choices should not be empty
     val isInputValid = questionText.isNotBlank() &&
             optionA.isNotBlank() &&
             optionB.isNotBlank() &&
@@ -447,6 +450,7 @@ fun AddQuestionScreen(
                     showConfirmReplaceDialog = true
                     questionToReplaceIndex = existingQuestionIndex
                 } else {
+                    //The question does not exist, then add it
                     val newQuestion = Question(
                         questionText,
                         listOf(optionA, optionB, optionC),
